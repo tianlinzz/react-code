@@ -78,18 +78,19 @@ const defaultOnRecoverableError =
   typeof reportError === 'function'
     ? // In modern browsers, reportError will dispatch an error event,
       // emulating an uncaught JavaScript error.
-      reportError
+    reportError
     : (error: mixed) => {
-        // In older browsers and test environments, fallback to console.error.
-        // eslint-disable-next-line react-internal/no-production-logging
-        console['error'](error);
-      };
+      // In older browsers and test environments, fallback to console.error.
+      // eslint-disable-next-line react-internal/no-production-logging
+      console['error'](error);
+    };
 
 function ReactDOMRoot(internalRoot: FiberRoot) {
+  // 存储应用根节点[FiberRootNode]
   this._internalRoot = internalRoot;
 }
-
-ReactDOMHydrationRoot.prototype.render = ReactDOMRoot.prototype.render = function(
+// 原型链上定义render方法
+ReactDOMHydrationRoot.prototype.render = ReactDOMRoot.prototype.render = function (
   children: ReactNodeList,
 ): void {
   const root = this._internalRoot;
@@ -101,17 +102,17 @@ ReactDOMHydrationRoot.prototype.render = ReactDOMRoot.prototype.render = functio
     if (typeof arguments[1] === 'function') {
       console.error(
         'render(...): does not support the second callback argument. ' +
-          'To execute a side effect after rendering, declare it in a component body with useEffect().',
+        'To execute a side effect after rendering, declare it in a component body with useEffect().',
       );
     } else if (isValidContainer(arguments[1])) {
       console.error(
         'You passed a container to the second argument of root.render(...). ' +
-          "You don't need to pass it again since you already passed it to create the root.",
+        "You don't need to pass it again since you already passed it to create the root.",
       );
     } else if (typeof arguments[1] !== 'undefined') {
       console.error(
         'You passed a second argument to root.render(...) but it only accepts ' +
-          'one argument.',
+        'one argument.',
       );
     }
 
@@ -123,23 +124,35 @@ ReactDOMHydrationRoot.prototype.render = ReactDOMRoot.prototype.render = functio
         if (hostInstance.parentNode !== container) {
           console.error(
             'render(...): It looks like the React-rendered content of the ' +
-              'root container was removed without using React. This is not ' +
-              'supported and will cause errors. Instead, call ' +
-              "root.unmount() to empty a root's container.",
+            'root container was removed without using React. This is not ' +
+            'supported and will cause errors. Instead, call ' +
+            "root.unmount() to empty a root's container.",
           );
         }
       }
     }
   }
+  // 开始加载react应用 children为App根组件, root为应用根节点对象FiberRootNode
+  /**
+   * react组件都会被转换为react-element对象:
+   * {
+   *    $$typeof: Symbol(react.element),
+   *    key: null,
+   *    props: {},
+   *    ref: null,
+   *    type: fun App() {}
+   * }
+   *
+   */
   updateContainer(children, root, null, null);
 };
-
-ReactDOMHydrationRoot.prototype.unmount = ReactDOMRoot.prototype.unmount = function(): void {
+// 原型链上定义unmount方法
+ReactDOMHydrationRoot.prototype.unmount = ReactDOMRoot.prototype.unmount = function (): void {
   if (__DEV__) {
     if (typeof arguments[0] === 'function') {
       console.error(
         'unmount(...): does not support a callback argument. ' +
-          'To execute a side effect after rendering, declare it in a component body with useEffect().',
+        'To execute a side effect after rendering, declare it in a component body with useEffect().',
       );
     }
   }
@@ -151,8 +164,8 @@ ReactDOMHydrationRoot.prototype.unmount = ReactDOMRoot.prototype.unmount = funct
       if (isAlreadyRendering()) {
         console.error(
           'Attempted to synchronously unmount a root while React was already ' +
-            'rendering. React cannot finish unmounting the root until the ' +
-            'current render has completed, which may lead to a race condition.',
+          'rendering. React cannot finish unmounting the root until the ' +
+          'current render has completed, which may lead to a race condition.',
         );
       }
     }
@@ -196,10 +209,10 @@ export function createRoot(
         ) {
           console.error(
             'You passed a JSX element to createRoot. You probably meant to ' +
-              'call root.render instead. ' +
-              'Example usage:\n\n' +
-              '  let root = createRoot(domContainer);\n' +
-              '  root.render(<App />);',
+            'call root.render instead. ' +
+            'Example usage:\n\n' +
+            '  let root = createRoot(domContainer);\n' +
+            '  root.render(<App />);',
           );
         }
       }
@@ -223,10 +236,15 @@ export function createRoot(
       transitionCallbacks = options.transitionCallbacks;
     }
   }
-
+  // 注：ConcurrentRoot为1，代表了v18版本的并发渲染模式
+  // 1、创建FiberRootNode应用根节点对象。
+  // 2、创建HostFiber虚拟DOM树根节点对象。
+  // 3、关联两个对象，可以互相访问。
+  // 4、初始化HostFiber的updateQueue属性。
+  // 5、返回FiberRootNode节点。
   const root = createContainer(
     container,
-    ConcurrentRoot,
+    ConcurrentRoot, // 1 默认开启并发模式
     null,
     isStrictMode,
     concurrentUpdatesByDefaultOverride,
@@ -234,25 +252,33 @@ export function createRoot(
     onRecoverableError,
     transitionCallbacks,
   );
+  // 给#root DOM元素设置一个内部属性，存储root.current 即HostFiber对象
   markContainerAsRoot(root.current, container);
 
   const rootContainerElement: Document | Element | DocumentFragment =
     container.nodeType === COMMENT_NODE
       ? (container.parentNode: any)
       : container;
+  // 监听[#root dom元素]的所有事件
+  // 1、在#root根元素上绑定所有的事件回调，任何子孙元素触发的改类型事件都会委托给【根元素的事件回调】处理。
+  // 2、寻找触发事件的dom元素，找到对应的FiberNode节点。
+  // 3、收集从当前FiberNode节点到HostFiber之间的所有注册该事件的回调函数。
+  // 4、循环执行一次收集的所有回调函数。
   listenToAllSupportedEvents(rootContainerElement);
-  console.log('createRoot:创建Root对象 已经创建');
+  //创建ReactDOMRoot实例对象并返回 将root应用根节点对象 存储为ReactDOM的内部对象
   return new ReactDOMRoot(root);
 }
 
 function ReactDOMHydrationRoot(internalRoot: FiberRoot) {
   this._internalRoot = internalRoot;
 }
+
 function scheduleHydration(target: Node) {
   if (target) {
     queueExplicitHydrationTarget(target);
   }
 }
+
 ReactDOMHydrationRoot.prototype.unstable_scheduleHydration = scheduleHydration;
 
 export function hydrateRoot(
@@ -270,7 +296,7 @@ export function hydrateRoot(
     if (initialChildren === undefined) {
       console.error(
         'Must provide initial children as second argument to hydrateRoot. ' +
-          'Example usage: hydrateRoot(domContainer, <App />)',
+        'Example usage: hydrateRoot(domContainer, <App />)',
       );
     }
   }
@@ -364,23 +390,23 @@ function warnIfReactDOMContainerInDEV(container: any) {
     ) {
       console.error(
         'createRoot(): Creating roots directly with document.body is ' +
-          'discouraged, since its children are often manipulated by third-party ' +
-          'scripts and browser extensions. This may lead to subtle ' +
-          'reconciliation issues. Try using a container element created ' +
-          'for your app.',
+        'discouraged, since its children are often manipulated by third-party ' +
+        'scripts and browser extensions. This may lead to subtle ' +
+        'reconciliation issues. Try using a container element created ' +
+        'for your app.',
       );
     }
     if (isContainerMarkedAsRoot(container)) {
       if (container._reactRootContainer) {
         console.error(
           'You are calling ReactDOMClient.createRoot() on a container that was previously ' +
-            'passed to ReactDOM.render(). This is not supported.',
+          'passed to ReactDOM.render(). This is not supported.',
         );
       } else {
         console.error(
           'You are calling ReactDOMClient.createRoot() on a container that ' +
-            'has already been passed to createRoot() before. Instead, call ' +
-            'root.render() on the existing root instead if you want to update it.',
+          'has already been passed to createRoot() before. Instead, call ' +
+          'root.render() on the existing root instead if you want to update it.',
         );
       }
     }

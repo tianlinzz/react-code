@@ -529,7 +529,7 @@ function pickArbitraryLaneIndex(lanes: Lanes) {
 function laneToIndex(lane: Lane) {
   return pickArbitraryLaneIndex(lane);
 }
-
+// 判断当前的lanes是否包含某个lane
 export function includesSomeLane(a: Lanes | Lane, b: Lanes | Lane) {
   return (a & b) !== NoLanes;
 }
@@ -537,11 +537,11 @@ export function includesSomeLane(a: Lanes | Lane, b: Lanes | Lane) {
 export function isSubsetOfLanes(set: Lanes, subset: Lanes | Lane) {
   return (set & subset) === subset;
 }
-
+// 合并lanes
 export function mergeLanes(a: Lanes | Lane, b: Lanes | Lane): Lanes {
   return a | b;
 }
-
+// 移除lanes
 export function removeLanes(set: Lanes, subset: Lanes | Lane): Lanes {
   return set & ~subset;
 }

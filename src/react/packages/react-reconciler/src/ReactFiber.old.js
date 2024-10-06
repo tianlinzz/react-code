@@ -60,7 +60,8 @@ import {
   CacheComponent,
   TracingMarkerComponent,
 } from './ReactWorkTags';
-import getComponentNameFromFiber from 'react-reconciler/src/getComponentNameFromFiber';
+import getComponentNameFromFiber
+  from 'react-reconciler/src/getComponentNameFromFiber';
 
 import {isDevToolsPresent} from './ReactFiberDevToolsHook.old';
 import {
@@ -122,36 +123,47 @@ function FiberNode(
   mode: TypeOfMode,
 ) {
   // Instance
-  this.tag = tag;
-  this.key = key;
-  this.elementType = null;
-  this.type = null;
+  // 节点信息
+  this.tag = tag; // 节点类型，非常重要，不同的值代表不同的节点对象
+  this.key = key; // 节点key
+  this.elementType = null; // 大部分情况同type，存储组件对象Element
+  this.type = null; // 组件原始定义
+  // 存储FiberNode对象对应的dom元素【hostCompoent】，
+  // 函数组件此属性无值，
+  // 类组件此属性存储的是组件实例instance
   this.stateNode = null;
 
   // Fiber
-  this.return = null;
-  this.child = null;
-  this.sibling = null;
+  // FiberNode节点之间的链接
+  this.return = null; // 指向父级节点对象FiberNode
+  this.child = null; // 指向第一个子节点FiberNode
+  this.sibling = null; // 指向下一个兄弟节点FiberNode
   this.index = 0;
 
   this.ref = null;
-
-  this.pendingProps = pendingProps;
-  this.memoizedProps = null;
-  this.updateQueue = null;
-  this.memoizedState = null;
+  // hooks相关属性
+  this.pendingProps = pendingProps; // 新的，等待处理的props
+  this.memoizedProps = null; // 旧的，上一次存储的props
+  this.updateQueue = null; // 存储update更新对象链表
+  this.memoizedState = null; // 类组件：旧的，上一次存储的state; 函数组件：存储hook链表
   this.dependencies = null;
 
-  this.mode = mode;
+  this.mode = mode;// 存储的是当前应用渲染模式：默认是concurrent mode
 
   // Effects
-  this.flags = NoFlags;
-  this.subtreeFlags = NoFlags;
-  this.deletions = null;
+  // 各种effect副作用相关的执行标记
+  this.flags = NoFlags; // 当前节点的副作用标记，默认无副作用
+  this.subtreeFlags = NoFlags; // 子树节点的副作用标记，默认无副作用
+  this.deletions = null; // 删除标记
+  // 优先级调度，默认为0
+  this.lanes = NoLanes; // 节点自身的更新Lanes
+  this.childLanes = NoLanes;// 子树的更新Lanes
 
-  this.lanes = NoLanes;
-  this.childLanes = NoLanes;
-
+  /**
+   *   这个属性指向另外一个缓冲区对应的FiberNode
+   *   current.alternate === workInProgress
+   *   workInProgress.alternate === current
+   */
   this.alternate = null;
 
   if (enableProfilerTimer) {
@@ -207,13 +219,14 @@ function FiberNode(
 //    is faster.
 // 5) It should be easy to port this to a C struct and keep a C implementation
 //    compatible.
-const createFiber = function(
+const createFiber = function (
   tag: WorkTag,
   pendingProps: mixed,
   key: null | string,
   mode: TypeOfMode,
 ): Fiber {
   // $FlowFixMe: the shapes are exact here but Flow doesn't like constructors
+  // 创建FiberNode实例对象
   return new FiberNode(tag, pendingProps, key, mode);
 };
 
@@ -315,9 +328,9 @@ export function createWorkInProgress(current: Fiber, pendingProps: any): Fiber {
     currentDependencies === null
       ? null
       : {
-          lanes: currentDependencies.lanes,
-          firstContext: currentDependencies.firstContext,
-        };
+        lanes: currentDependencies.lanes,
+        firstContext: currentDependencies.firstContext,
+      };
 
   // These will be overridden during the parent's reconciliation
   workInProgress.sibling = current.sibling;
@@ -410,9 +423,9 @@ export function resetWorkInProgress(workInProgress: Fiber, renderLanes: Lanes) {
       currentDependencies === null
         ? null
         : {
-            lanes: currentDependencies.lanes,
-            firstContext: currentDependencies.firstContext,
-          };
+          lanes: currentDependencies.lanes,
+          firstContext: currentDependencies.firstContext,
+        };
 
     if (enableProfilerTimer) {
       // Note: We don't reset the actualTime counts. It's useful to accumulate
@@ -461,7 +474,7 @@ export function createHostRootFiber(
     // Without some nodes in the tree having empty base times.
     mode |= ProfileMode;
   }
-
+  // 创建Fiber对象 tag为 3即代表HostRoot节点
   return createFiber(HostRoot, null, null, mode);
 }
 
@@ -582,8 +595,8 @@ export function createFiberFromTypeAndProps(
 
         throw new Error(
           'Element type is invalid: expected a string (for built-in ' +
-            'components) or a class/function (for composite components) ' +
-            `but got: ${type == null ? type : typeof type}.${info}`,
+          'components) or a class/function (for composite components) ' +
+          `but got: ${type == null ? type : typeof type}.${info}`,
         );
       }
     }

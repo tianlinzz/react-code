@@ -365,11 +365,17 @@ export function createTextInstance(
   return textNode;
 }
 
+/**
+ * react应用的首次加载并不是由某个具体的事件触发的，
+ * 所以window.event的值为undefined，这里就会返回默认的事件优先级lane来作为应用初始加载的优先级。
+ */
 export function getCurrentEventPriority(): * {
-  const currentEvent = window.event;
+  const currentEvent = window.event;  // 应用首次加载，这里为undefined
   if (currentEvent === undefined) {
+    // 返回默认事件优先级16
     return DefaultEventPriority;
   }
+  // 返回事件对应的优先级
   return getEventPriority(currentEvent.type);
 }
 

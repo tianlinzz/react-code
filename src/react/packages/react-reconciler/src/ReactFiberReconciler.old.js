@@ -36,7 +36,8 @@ import {
   HostRoot,
   SuspenseComponent,
 } from './ReactWorkTags';
-import getComponentNameFromFiber from 'react-reconciler/src/getComponentNameFromFiber';
+import getComponentNameFromFiber
+  from 'react-reconciler/src/getComponentNameFromFiber';
 import isArray from 'shared/isArray';
 import {enableSchedulingProfiler} from 'shared/ReactFeatureFlags';
 import ReactSharedInternals from 'shared/ReactSharedInternals';
@@ -68,7 +69,9 @@ import {
   discreteUpdates,
   flushPassiveEffects,
 } from './ReactFiberWorkLoop.old';
-import {enqueueConcurrentRenderForLane} from './ReactFiberConcurrentUpdates.old';
+import {
+  enqueueConcurrentRenderForLane
+} from './ReactFiberConcurrentUpdates.old';
 import {
   createUpdate,
   enqueueUpdate,
@@ -99,6 +102,7 @@ import {
   findHostInstancesForRefresh,
 } from './ReactFiberHotReloading.old';
 import ReactVersion from 'shared/ReactVersion';
+
 export {registerMutableSourceForHydration} from './ReactMutableSource.old';
 export {createPortal} from './ReactPortal';
 export {
@@ -208,10 +212,10 @@ function findHostInstanceWithWarning(
           if (fiber.mode & StrictLegacyMode) {
             console.error(
               '%s is deprecated in StrictMode. ' +
-                '%s was passed an instance of %s which is inside StrictMode. ' +
-                'Instead, add a ref directly to the element you want to reference. ' +
-                'Learn more about using refs safely here: ' +
-                'https://reactjs.org/link/strict-mode-find-node',
+              '%s was passed an instance of %s which is inside StrictMode. ' +
+              'Instead, add a ref directly to the element you want to reference. ' +
+              'Learn more about using refs safely here: ' +
+              'https://reactjs.org/link/strict-mode-find-node',
               methodName,
               methodName,
               componentName,
@@ -219,10 +223,10 @@ function findHostInstanceWithWarning(
           } else {
             console.error(
               '%s is deprecated in StrictMode. ' +
-                '%s was passed an instance of %s which renders StrictMode children. ' +
-                'Instead, add a ref directly to the element you want to reference. ' +
-                'Learn more about using refs safely here: ' +
-                'https://reactjs.org/link/strict-mode-find-node',
+              '%s was passed an instance of %s which renders StrictMode children. ' +
+              'Instead, add a ref directly to the element you want to reference. ' +
+              'Learn more about using refs safely here: ' +
+              'https://reactjs.org/link/strict-mode-find-node',
               methodName,
               methodName,
               componentName,
@@ -254,8 +258,11 @@ export function createContainer(
   onRecoverableError: (error: mixed) => void,
   transitionCallbacks: null | TransitionTracingCallbacks,
 ): OpaqueRoot {
+  // hydrate代表ssr，默认为false
   const hydrate = false;
+  // initialChildren代表初始子节点，这里为null
   const initialChildren = null;
+  // 创建root应用根节点对象
   return createFiberRoot(
     containerInfo,
     tag,
@@ -318,8 +325,15 @@ export function createHydrationContainer(
   return root;
 }
 
+// 加载应用：触发调度更新任务
+/**
+ * 1、获取更新优先级lane，也就是生成一个本次更新对应的lane。
+ * 2、创建update更新对象。
+ * 3、将update更新对象添加到目标Fiber对象的更新队列中。
+ * 4、开启一个新的调度更新任务。
+ */
 export function updateContainer(
-  element: ReactNodeList,
+  element: ReactNodeList, // App根组件
   container: OpaqueRoot,
   parentComponent: ?React$Component<any, any>,
   callback: ?Function,
@@ -327,18 +341,24 @@ export function updateContainer(
   if (__DEV__) {
     onScheduleRoot(container, element);
   }
+  // 取出current对象,为HostFiber 【它是当前Fiber树的根节点】
   const current = container.current;
+  // 获取当前的程序执行时间【默认是performenct.now返回的微秒时间】
   const eventTime = requestEventTime();
+  // 获取更新优先级lane
   const lane = requestUpdateLane(current);
 
   if (enableSchedulingProfiler) {
     markRenderScheduled(lane);
   }
-
+  // 获取父组件的上下文,因为parentComponent为null,所以这里context为空对象
   const context = getContextForSubtree(parentComponent);
   if (container.context === null) {
+    // 从null变为{}
+    // 如果容器的上下文为null， 则把父级上下文赋值
     container.context = context;
   } else {
+    // 如果容器存在上下文，则把父级的上下文设置为等待处理的上下文
     container.pendingContext = context;
   }
 
@@ -351,35 +371,38 @@ export function updateContainer(
       didWarnAboutNestedUpdates = true;
       console.error(
         'Render methods should be a pure function of props and state; ' +
-          'triggering nested component updates from render is not allowed. ' +
-          'If necessary, trigger nested updates in componentDidUpdate.\n\n' +
-          'Check the render method of %s.',
+        'triggering nested component updates from render is not allowed. ' +
+        'If necessary, trigger nested updates in componentDidUpdate.\n\n' +
+        'Check the render method of %s.',
         getComponentNameFromFiber(ReactCurrentFiberCurrent) || 'Unknown',
       );
     }
   }
-
+  // 创建一个update更新对象
   const update = createUpdate(eventTime, lane);
   // Caution: React DevTools currently depends on this property
   // being called "element".
+  // 将更新对象的 payload 属性设置为App根组件的内容，【即：本次应用加载的内容为App根组件】
   update.payload = {element};
-
+  // 本来就没有，设置完还是null
   callback = callback === undefined ? null : callback;
+  // 检查回调函数 callback 是否为空，如果不为空，则将其添加到更新对象的 callback 属性中
   if (callback !== null) {
     if (__DEV__) {
       if (typeof callback !== 'function') {
         console.error(
           'render(...): Expected the last optional `callback` argument to be a ' +
-            'function. Instead received: %s.',
+          'function. Instead received: %s.',
           callback,
         );
       }
     }
     update.callback = callback;
   }
-
+  // 将更新对象update：添加到当前current对象的更新队列中
   const root = enqueueUpdate(current, update, lane);
   if (root !== null) {
+    // 开启一个新的调度更新任务 是react开始执行调度更新的入口函数。
     scheduleUpdateOnFiber(root, current, lane, eventTime);
     entangleTransitions(root, current, lane);
   }
